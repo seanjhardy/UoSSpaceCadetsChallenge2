@@ -6,11 +6,15 @@
 package barebones;
 
 import static barebones.BareBones.getCD;
+import static barebones.BareBones.isProgramRunning;
 import static barebones.BareBones.loadFile;
+import static barebones.BareBones.parse;
 import static barebones.BareBones.runFile;
 import static barebones.BareBones.saveFile;
 import static barebones.BareBones.setCD;
 import static barebones.GUIManager.getColour;
+import static barebones.GUIManager.getMainPanel;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -22,6 +26,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -32,6 +38,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
 
 /**
  *
@@ -50,10 +62,12 @@ public final class MainPanel extends JPanel{
     private ButtonVariable runFile = new ButtonVariable(false);
     
     private ButtonVariable debugMode = new ButtonVariable(false);
+    private ButtonVariable step = new ButtonVariable(false);
     private ButtonVariable exit = new ButtonVariable(false);
     
     private ArrayList<String> consoleText = new ArrayList<>();
     private int consoleLineNum = 0;
+    private int lineStart, lineLength;
     
     public MainPanel(GUIManager parent){
         this.parent = parent;
@@ -76,8 +90,21 @@ public final class MainPanel extends JPanel{
         //draw background
         g.setColor(getColour("background"));
         g.fillRect(0,0,1920,1080);
+        if(isProgramRunning()){
+          if((debugMode.getValue())){
+            if(step.getValue()){
+              parse();
+              step.setValue(false);
+            }
+          }else{
+            parse();
+          }
+        }
         RenderComponents(g2);
         processComponentUpdate();
+        if(isProgramRunning()){
+          repaint();
+        }
     }
     
     public void RenderComponents(Graphics2D g2){
@@ -115,7 +142,15 @@ public final class MainPanel extends JPanel{
       DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
       Calendar cal = Calendar.getInstance();
       String time = dateFormat.format(cal.getTime());
-      consoleText.add(time + "> " + log);
+      String text = "";
+      if(err){
+        text += "<span style=\"color:red;\">";
+      }
+      text += time + "> " + log;
+      if(err){
+        text += "</span>";
+      }
+      consoleText.add(text);
       consoleLineNum += 1;
     }
     
@@ -134,24 +169,49 @@ public final class MainPanel extends JPanel{
       debugger.setText(debugText);
     }
     
+    public void highlightLine(int lineNum, int lineStart, int lineLen){
+      //highlight line
+      StyleContext style = StyleContext.getDefaultStyleContext();
+      AttributeSet textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Background, getColour("noColour"));
+      getSource().getStyledDocument().setCharacterAttributes(this.lineStart, this.lineLength, textStyle, false);
+      
+      this.lineStart = lineStart;
+      this.lineLength = lineLen;
+
+      textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Background, getColour("highlightedLine"));
+      getSource().getStyledDocument().setCharacterAttributes(this.lineStart, this.lineLength, textStyle, false);
+      try {
+        Thread.sleep(20);
+      } catch (InterruptedException ex) {
+        Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+    
     public void processComponentUpdate(){
-      if(runFile.getValue()){
-        runFile.setValue(false);
-        saveHelper(getFilename(), getSource(), fileSaved());
+      if(runFile.getValue() && !runFile.getLastState()){
+        runFile.setLastState(runFile.getValue());
+        saveHelper(getFilename(), getSource().getText(), fileSaved());
         if(fileSaved()){
           runFile(getFilename());
         }
       }
+      if(!BareBones.isProgramRunning()){
+        runFile.setValue(false);
+      }
+      if(!runFile.getValue() && BareBones.isProgramRunning()){
+        throwErr("User Termination", new ArrayList<>());
+        BareBones.setProgramRunning(false);
+      }
       if(newFile.getValue()){
         newFile.setValue(false);
-        saveHelper(getFilename(), getSource(), fileSaved());
-        ((JTextField)mainUI.getComponent("filename")).setText("");
+        saveHelper(getFilename(), getSource().getText(), fileSaved());
+        ((JTextField)mainUI.getComponent("filename")).setText("filename");
         ((JTextPane)((JScrollPane)mainUI.getComponent("source"))
               .getViewport().getView()).setText("");
       }
       if(saveFile.getValue()){
         saveFile.setValue(false);
-        saveHelper(getFilename(), getSource(), fileSaved());
+        saveHelper(getFilename(), getSource().getText(), fileSaved());
       }
       if(exit.getValue()){
         exit.setValue(false);
@@ -203,9 +263,9 @@ public final class MainPanel extends JPanel{
     }
     
 
-    public String getSource(){
-      return ((JTextPane)((JScrollPane)mainUI.getComponent("source"))
-              .getViewport().getView()).getText();
+    public JTextPane getSource(){
+      return (JTextPane)((JScrollPane)mainUI.getComponent("source"))
+              .getViewport().getView();
     }
     public String getFilename(){
       return ((JTextField)mainUI.getComponent("filename")).getText();
@@ -217,6 +277,13 @@ public final class MainPanel extends JPanel{
     
     public int getConsoleLastLineNum(){
       return consoleLineNum;
+    }
+    
+    public int getLineStart(){
+      return lineStart;
+    }
+    public int getLineLength(){
+      return lineLength;
     }
     
     public ButtonVariable getOpenFileBool(){
@@ -232,8 +299,12 @@ public final class MainPanel extends JPanel{
       return runFile;
     }
     
-    public ButtonVariable getDebuggerBool(){
+    public ButtonVariable getDebugBool(){
       return debugMode;
+    }
+    
+    public ButtonVariable getStepBool(){
+      return step;
     }
     
     public ButtonVariable getExitBool(){

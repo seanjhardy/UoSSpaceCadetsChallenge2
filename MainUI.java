@@ -48,7 +48,9 @@ public class MainUI extends Menu{
         createImageButton("save", "Save", "SaveHighlighted", "SaveHighlighted", "Save", ((MainPanel)parent).getSaveFileBool(), getColour("button")).setBorder(null);    
         createImageButton("run", "Stop", "StopHighlighted", "RunHighlighted", "Run", ((MainPanel)parent).getRunBool(), getColour("button")).setBorder(null);    
         
-        createImageButton("settings", "Settings", "SettingsHighlighted", "SettingsHighlighted", "Settings", ((MainPanel)parent).getDebuggerBool(), getColour("button")).setBorder(null);    
+        createImageButton("debug", "Debug", "DebugHighlighted", "DebugHighlighted", "Debug", ((MainPanel)parent).getDebugBool(), getColour("button")).setBorder(null);    
+        createImageButton("step", "Step", "StepHighlighted", "StepHighlighted", "Step", ((MainPanel)parent).getStepBool(), getColour("button")).setBorder(null);    
+        
         createImageButton("exit", "Exit", "ExitHighlighted", "ExitHighlighted", "Exit", ((MainPanel)parent).getExitBool(), getColour("button")).setBorder(null);    
         
         JTextField filename = createTextField("filename", "filename", getColour("background"));
@@ -98,13 +100,16 @@ public class MainUI extends Menu{
         getComponent("new").setBounds(startX+160, startY, 30, 30);
         getComponent("run").setBounds(startX+190, startY, 30, 30);
         
-        getComponent("settings").setBounds(startX+width-75, startY, 30, 30);
+        getComponent("debug").setBounds(startX+width-75, startY, 30, 30);
         getComponent("exit").setBounds(startX+width-45, startY, 30, 30);
         
         //code
         int endWidth = width-35;
-        if(((MainPanel)parent).getDebuggerBool().getValue()){
+        if(((MainPanel)parent).getDebugBool().getValue()){
           endWidth -= 200;
+          getComponent("step").setBounds(endWidth+20, startY+40, 20, 20);
+        }else{
+          getComponent("step").setBounds(0,0,0,0);
         }
         getComponent("source").setBounds(startX+10, startY+40, endWidth, height-215);
         JTextPane source = (JTextPane) ((JScrollPane)getComponent("source")).getViewport().getView();
@@ -116,6 +121,6 @@ public class MainUI extends Menu{
 
         getComponent("consoleInput").setBounds(startX+10, height-80, endWidth, 30);
         
-        getComponent("debugInfo").setBounds(endWidth+20, startY+40, width-endWidth-50, height-100);
+        getComponent("debugInfo").setBounds(endWidth+20, startY+60, width-endWidth-50, height-100);
     }
 }

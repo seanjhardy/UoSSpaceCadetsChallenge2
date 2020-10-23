@@ -12,29 +12,21 @@ import static barebones.GUIManager.brightness;
 import static barebones.GUIManager.getColour;
 import java.awt.Color;
 import static java.awt.Color.WHITE;
-import java.awt.Component;
 import java.awt.Font;
-import java.awt.Graphics;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSlider;
-import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -42,11 +34,8 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.MatteBorder;
-import javax.swing.event.ChangeEvent;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.Element;
 import javax.swing.text.StyleConstants;
@@ -233,57 +222,6 @@ public class Menu{
         return label;
     }
     
-    public final JSlider createSlider(String name, String text, int lowerBound, int upperBound, int defaultValue, int numValues, boolean paintLabels, ButtonVariable updateBool, Color background){
-        JSlider slider = new JSlider(JSlider.HORIZONTAL, lowerBound,upperBound, defaultValue);
-        slider.setForeground(WHITE);
-        slider.setMajorTickSpacing(upperBound-lowerBound);
-        slider.setMinorTickSpacing((int)(((upperBound-lowerBound)/numValues)));
-        slider.setPaintTicks(true);
-        slider.setSnapToTicks(true);
-        slider.setPaintLabels(paintLabels);
-        slider.setBackground(background);
-        slider.setFocusable(false);
-        slider.addChangeListener((ChangeEvent e) -> {
-            updateBool.setValue(true);
-        });
-        slider.setFont(new Font(getDefaultFont(), 0, 14));
-        parent.add(slider);
-        components.put(name, slider);
-        return slider;
-    }
-    
-    public final JComboBox createComboBox(String name){
-        JComboBox comboBox = new JComboBox<>();
-        comboBox.setForeground(WHITE);
-        comboBox.setBackground(new Color(0, 0, 0));
-        comboBox.setMaximumRowCount(6);
-        comboBox.setFont(new Font(getDefaultFont(), 0, 14));
-        parent.add(comboBox);
-        components.put(name, comboBox);
-        return comboBox;
-    }
-    
-    public final JScrollPane createDataPlot(String name){
-        DataPlot panel = new DataPlot(name);
-        panel.setVisible(true);
-        panel.setOpaque(false);
-        panel.setBackground(new Color(0,0,0,0));
-        
-        JScrollPane scrollPane = new JScrollPane();
-        scrollPane.setViewportView(panel);
-        scrollPane.setWheelScrollingEnabled(true);
-        scrollPane.setOpaque(false);
-        scrollPane.setBackground(new Color(0,0,0,50));
-        scrollPane.getViewport().setBackground(new Color(0,0,0,0));
-        scrollPane.setForeground(WHITE);
-        scrollPane.setWheelScrollingEnabled(true);
-        scrollPane.setVerticalScrollBarPolicy(
-        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED); 
-        parent.add(scrollPane);
-        components.put(name, scrollPane);
-        return scrollPane;
-    }
-    
     public final JScrollPane createSourceArea(String name, String defaultText, Color colour){
         JScrollPane scrollPane = new JScrollPane();
         scrollPane.setBackground(getColour("background"));
@@ -303,7 +241,7 @@ public class Menu{
         textField.setBackground(colour);
         textField.setFont(new Font(getDefaultFont(), 0, 14));
         
-        textField.setForeground(new Color(200,200,200));
+        textField.setForeground(new Color(200, 200, 200));
         textField.addFocusListener(new FocusListener() {
             @Override
             public void focusLost(FocusEvent e) {
@@ -340,30 +278,35 @@ public class Menu{
               }
               lastUpdate = System.currentTimeMillis();
               Runnable doHighlight = new Runnable() {
-                  @Override
-                  public void run() {
-                      StyleContext style = StyleContext.getDefaultStyleContext();
-                      String input = textField.getText();
-                      ArrayList<String[]> patterns = new ArrayList<>();
-                      patterns.add(new String[]{"style2", "\\b(while|end|not|do)\\b"});
-                      patterns.add(new String[]{"style3", "\\b(clear)\\b"});
-                      patterns.add(new String[]{"style4", "\\b(incr|decr)\\b"});
-                      patterns.add(new String[]{"style5", "\\b([0-9]+)\\b"});
-                      patterns.add(new String[]{"comments", "#(.*)(\\n|\\b)"});
-                      
-                      //highlight all to white
-                      AttributeSet textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Foreground, getColour("style1"));
-                      textField.getStyledDocument().setCharacterAttributes(0, textField.getDocument().getLength(), textStyle, false);
-                      
-                      //highlight numbers
-                      for(String[] pattern : patterns){
-                        textStyle = style.addAttribute(style.getEmptySet(),StyleConstants.Foreground, getColour(pattern[0]));
-                        Matcher m = Pattern.compile(pattern[1]).matcher(input);
-                        while(m.find()){
-                            textField.getStyledDocument().setCharacterAttributes(m.start(),(m.end() - m.start()),textStyle, false);
-                        }
-                      }
+                @Override
+                public void run() {
+                  StyleContext style = StyleContext.getDefaultStyleContext();
+                  String input = textField.getText();
+                  ArrayList<String[]> patterns = new ArrayList<>();
+                  String keywords = "\\b(while|end|do|if|else";
+                  for(String s : BareBones.getOperators()){
+                    keywords += "|"+s;
                   }
+                  keywords += ")\\b";
+                  patterns.add(new String[]{"style2", keywords});
+                  patterns.add(new String[]{"style3", "\\b(clear)\\b"});
+                  patterns.add(new String[]{"style4", "\\b(incr|decr)\\b"});
+                  patterns.add(new String[]{"style5", "\\b([0-9]+)\\b"});
+                  patterns.add(new String[]{"comments", "#(.*)(\\n|\\b)"});
+
+                  //highlight all to white
+                  AttributeSet textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Foreground, getColour("style1"));
+                  textField.getStyledDocument().setCharacterAttributes(0, textField.getDocument().getLength(), textStyle, false);
+
+                  //highlight numbers
+                  for(String[] pattern : patterns){
+                    textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Foreground, getColour(pattern[0]));
+                    Matcher m = Pattern.compile(pattern[1]).matcher(input);
+                    while(m.find()){
+                        textField.getStyledDocument().setCharacterAttributes(m.start(),(m.end() - m.start()),textStyle, false);
+                    }
+                  }
+                }
               };  
               SwingUtilities.invokeLater(doHighlight); 
             }
@@ -416,81 +359,11 @@ public class Menu{
         return scrollPane;
     }
     
-    
-    
-    public final JTable createTable(String name, Color foreground, Color background){
-        DefaultTableModel tableModel = new DefaultTableModel();
-        JTable table = new JTable(){
-            @Override
-            public boolean isCellEditable(int row, int column) {                
-                return false;    
-            }
-            @Override
-            public Component prepareRenderer(TableCellRenderer renderer, int row, int column){
-                Component returnComp = super.prepareRenderer(renderer, row, column);
-                JComponent jc = (JComponent)returnComp;
-                
-                Color backgroundColor = foreground;
-                Color alternateColor = new Color(backgroundColor.getRed(), backgroundColor.getBlue(), backgroundColor.getGreen(), 100);
-                Color mainColor = new Color(0,0,0,100);
-                Color bg = new Color(66, 103, 125, 100);
-                returnComp.setForeground(WHITE);
-                if (!returnComp.getBackground().equals(getSelectionBackground())){
-                    bg = (row % 2 == 0 ? alternateColor : mainColor);
-                    returnComp.setBackground(bg);
-                }
-                returnComp.setBackground(bg);
-                Color newBg = new Color(bg.getRed(),bg.getGreen(),bg.getBlue(),255);
-                jc.setBorder(new MatteBorder(3, 0, 3, 0, newBg));
-                return returnComp;
-            }
-        };
-        table.getTableHeader().setReorderingAllowed(false);
-        table.setModel(tableModel);
-        table.getTableHeader().setBackground(foreground);
-        table.getTableHeader().setForeground(background);
-        table.setSelectionBackground(new Color(29, 73, 163,100));
-        table.setBackground(foreground);
-        table.setForeground(background);
-        table.setOpaque(false);
-        
-
-        JScrollPane tableScrollPane = new JScrollPane(table);
-        tableScrollPane.setOpaque(false);
-        tableScrollPane.setBackground(foreground);
-        tableScrollPane.setForeground(background);
-        tableScrollPane.getViewport().setBackground(foreground);
-        tableScrollPane.getViewport().setForeground(background);
-        tableScrollPane.setHorizontalScrollBarPolicy(
-        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        tableScrollPane.setVerticalScrollBarPolicy(
-        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED); 
-        tableScrollPane.setViewportView(table);
-        tableScrollPane.setVisible(true);
-        parent.add(tableScrollPane);
-        components.put(name, table);
-        return table;
-    }
-    
     public final JComponent getComponent(String name){
         return components.get(name);
     }
+    
     public boolean isMouseOver(int mouseX, int mouseY){
         return (mouseX > startX && mouseX < startX + width && mouseY > startY && mouseY < startY + height);
-    }
-
-    public class DataPlot extends JPanel{
-        private String name;
-        
-        public DataPlot(String name){
-            super();
-            this.name = name;
-        }
-        
-        @Override
-        public void paintComponent(Graphics g){
-            
-        }
-        
     }
 }

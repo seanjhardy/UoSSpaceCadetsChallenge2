@@ -5,31 +5,19 @@
  */
 package barebones;
 
-import java.awt.AlphaComposite;
 import java.awt.CardLayout;
 import java.awt.Color;
-import static java.awt.Color.WHITE;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontFormatException;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.geom.AffineTransform;
-import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.UIManager;
@@ -105,7 +93,7 @@ public final class GUIManager extends JFrame{
         setCurrentPanel("mainPanel");
         
         setSize(1000, 800);
-        setMinimumSize(new Dimension(750,750));
+        setMinimumSize(new Dimension(750,1000));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         //setExtendedState(JFrame.MAXIMIZED_BOTH);
         //setSize((int)screenSize.getWidth(), (int)screenSize.getHeight());
@@ -163,6 +151,8 @@ public final class GUIManager extends JFrame{
         colourScheme.put("consoleForeground", Color.decode("#a4c3ed"));
         colourScheme.put("banner", Color.decode("#43506e"));
         colourScheme.put("button", Color.decode("#43506e"));
+        
+        colourScheme.put("highlightedLine", Color.decode("#54e858"));
         
         colourScheme.put("comments", Color.decode("#777777"));
         colourScheme.put("style1", Color.decode("#ffffff"));
