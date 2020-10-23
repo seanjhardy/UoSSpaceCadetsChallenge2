@@ -1,27 +1,21 @@
-clear X; incr X; clear Y;
+clear X; 
+incr X; 
+clear Y;
 incr Y;
 incr Y;
 clear Z;
 incr Z;
 incr Z;
 incr Z;
-#comment lol
-#comment
-##comments
-##comment
-#com
-#cc
 if X EQL Y;
-clear A;
+	clear A;
 else if X NOT Z;
-clear B;
+	clear B;
 else if X EQL Z;
-clear C;
+	clear C;
 else;
-clear D;
+	clear D;
 end;
-
-clear variableTesting;
 
 
 
