@@ -1,37 +1,34 @@
-#create variable X and set its value to 5
 clear X;
 incr X;
 incr X;
-incr X;
-incr X;
-incr X;
-
-#set the value of Y to 3
 clear Y;
 incr Y;
 incr Y;
 incr Y;
-
-#create variable z
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
+incr Y;
 clear Z;
-
-while X not 0 do;
+while X NOT 0 do;
    clear W;
-   while Y not 0 do;
+   while Y NOT 0 do;
       incr Z;
       incr W;
       decr Y;
    end;
-   while W not 0 do;
+   while W NOT 0 do;
       incr Y;
       decr W;
    end;
    decr X;
 end;
-
-
-
-
 
 
 
