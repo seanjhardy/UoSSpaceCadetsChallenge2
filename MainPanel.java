@@ -5,29 +5,32 @@
  */
 package barebones;
 
-import static barebones.BareBones.getCD;
-import static barebones.BareBones.isProgramRunning;
-import static barebones.BareBones.loadFile;
-import static barebones.BareBones.parse;
+import static barebones.BareBones.getCurrentInstruction;
 import static barebones.BareBones.runFile;
-import static barebones.BareBones.saveFile;
-import static barebones.BareBones.setCD;
+import static barebones.ConsoleManager.throwErr;
+import static barebones.FileManager.getCD;
+import static barebones.FileManager.loadFile;
+import static barebones.FileManager.saveFile;
+import static barebones.FileManager.setCD;
 import static barebones.GUIManager.getColour;
-import static barebones.GUIManager.getMainPanel;
+import static barebones.GUIManager.getDefaultFont;
+import static barebones.Variable.getVariables;
 import java.awt.Color;
+import static java.awt.Color.WHITE;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.io.File;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -37,11 +40,14 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DefaultHighlighter;
-import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter;
+import javax.swing.text.Element;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyleContext;
 
@@ -53,6 +59,7 @@ public final class MainPanel extends JPanel{
     
     private GUIManager parent;
     private MainUI mainUI;
+    private ConsoleManager console;
     
     private Rectangle frameBounds;
     
@@ -65,22 +72,14 @@ public final class MainPanel extends JPanel{
     private ButtonVariable step = new ButtonVariable(false);
     private ButtonVariable exit = new ButtonVariable(false);
     
-    private ArrayList<String> consoleText = new ArrayList<>();
-    private int consoleLineNum = 0;
     private int lineStart, lineLength;
     
     public MainPanel(GUIManager parent){
         this.parent = parent;
         setBackground(getColour("background"));
-        createWidgets();
-        printToLog("BareBones STARTING CONSOLE", false);
-        printToLog("BareBones V1.0.0", false);
-        printToLog("By Seanjhardy", false);
-        printToLog("===============", false);
-    }
-    
-    public final void createWidgets(){
         mainUI = new MainUI(this);
+        console = new ConsoleManager((JLabel) ((JScrollPane) mainUI.getComponent("console")).getViewport().getView());
+        ConsoleManager.printStartupMessage();
     }
     
     @Override
@@ -90,100 +89,67 @@ public final class MainPanel extends JPanel{
         //draw background
         g.setColor(getColour("background"));
         g.fillRect(0,0,1920,1080);
-        if(isProgramRunning()){
-          if((debugMode.getValue())){
-            if(step.getValue()){
-              parse();
-              step.setValue(false);
-            }
-          }else{
-            parse();
-          }
-        }
         RenderComponents(g2);
         processComponentUpdate();
-        if(isProgramRunning()){
-          repaint();
-        }
     }
     
     public void RenderComponents(Graphics2D g2){
         frameBounds = parent.getBounds();
-        String newText = consoleText.stream().collect(Collectors.joining("<br>"));
-        getConsole().setText("<html><body style=\"text-align: justify;  text-justify: inter-word;\">" + 
-                newText + "</body></html>");
-        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-          public void run() { 
-            JScrollPane scrollPane = ((JScrollPane)mainUI.getComponent("console"));
-            JScrollBar scroll = scrollPane.getVerticalScrollBar();
-            scroll.setValue(scroll.getMaximum());
-          }
-        });
+        console.render();
         mainUI.resize(0, 0, (int)frameBounds.getWidth(), (int)frameBounds.getHeight());
         mainUI.render(g2);
         
     }
     
-    public void parseConsoleInput(String input){
-      printToLog(input, false);
-    }
-    
-    public void throwErr(String errorType, ArrayList<String[]> location){
-      printToLog(errorType, true);
-      String tab = "&#9";
-      for(int i = 0; i < location.size(); i++){
-        String tabs = String.join("", Collections.nCopies(i, tab));
-        String[] loc = location.get(i);
-        printToLog(tabs + "at >>" + loc[0] + " on line " + loc[1], true);
-      }
-    }
-    
-    public void printToLog(String log, boolean err){
-      DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-      Calendar cal = Calendar.getInstance();
-      String time = dateFormat.format(cal.getTime());
-      String text = "";
-      if(err){
-        text += "<span style=\"color:red;\">";
-      }
-      text += time + "> " + log;
-      if(err){
-        text += "</span>";
-      }
-      consoleText.add(text);
-      consoleLineNum += 1;
-    }
-    
     public void updateDebugger(){
-      HashMap<String, Integer> variables = BareBones.getVariables();
+      HashMap<String, Variable> variables = getVariables();
       JLabel debugger = (JLabel) mainUI.getComponent("debugInfo");
-      String debugText = "<html><span>VARIABLES:<br>";
+      String debugText = "<html><span>Current Instruction: <br>";
+      debugText += getCurrentInstruction() + "<br>";
+      debugText += "VARIABLES:<br>";
       
-      for(Map.Entry<String, Integer> entry : variables.entrySet()){
+      for(Map.Entry<String, Variable> entry : variables.entrySet()){
         String key = entry.getKey();
-        Integer value = entry.getValue();
-        debugText += (key+" : "+value + "<br>");
+        Variable variable = entry.getValue();
+        debugText += (key+" : " + variable.getValue() + "<br>");
       }
       
       debugText += "</span></html>";
       debugger.setText(debugText);
     }
     
-    public void highlightLine(int lineNum, int lineStart, int lineLen){
+    public void highlightLine(int lineNum){
       //highlight line
       StyleContext style = StyleContext.getDefaultStyleContext();
       AttributeSet textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Background, getColour("noColour"));
       getSource().getStyledDocument().setCharacterAttributes(this.lineStart, this.lineLength, textStyle, false);
       
-      this.lineStart = lineStart;
-      this.lineLength = lineLen;
-
+      if(lineNum == -1){
+        return;
+      }
+      
+      String text = getSource().getText();
+      String[] splitString = text.split("\n");
+      this.lineStart = 0;
+      for(int i = 0; i < splitString.length; i++){
+        if(i == lineNum){
+          lineLength = splitString[i].length();
+        }else if(i < lineNum){
+          lineStart += splitString[i].length()+1;
+        }
+      }
+      
       textStyle = style.addAttribute(style.getEmptySet(), StyleConstants.Background, getColour("highlightedLine"));
       getSource().getStyledDocument().setCharacterAttributes(this.lineStart, this.lineLength, textStyle, false);
+      
+      updateDebugger();
+      mainUI.getComponent("debugInfo").paintImmediately(mainUI.getComponent("debugInfo").bounds());
+      getSource().paintImmediately(getSource().bounds());
       try {
-        Thread.sleep(20);
+        Thread.sleep(50);
       } catch (InterruptedException ex) {
-        Logger.getLogger(MainPanel.class.getName()).log(Level.SEVERE, null, ex);
+        Logger.getLogger(BareBones.class.getName()).
+                log(Level.SEVERE, null, ex);
       }
     }
     
@@ -198,9 +164,13 @@ public final class MainPanel extends JPanel{
       if(!BareBones.isProgramRunning()){
         runFile.setValue(false);
       }
+      
+      if(step.getValue()){
+        System.out.println("yo");
+        step.setValue(false);
+      }
       if(!runFile.getValue() && BareBones.isProgramRunning()){
         throwErr("User Termination", new ArrayList<>());
-        BareBones.setProgramRunning(false);
       }
       if(newFile.getValue()){
         newFile.setValue(false);
@@ -261,7 +231,6 @@ public final class MainPanel extends JPanel{
         }
       }
     }
-    
 
     public JTextPane getSource(){
       return (JTextPane)((JScrollPane)mainUI.getComponent("source"))
@@ -271,20 +240,6 @@ public final class MainPanel extends JPanel{
       return ((JTextField)mainUI.getComponent("filename")).getText();
     }
     
-    public JLabel getConsole(){
-      return ((JLabel)((JScrollPane)mainUI.getComponent("console")).getViewport().getView());
-    }
-    
-    public int getConsoleLastLineNum(){
-      return consoleLineNum;
-    }
-    
-    public int getLineStart(){
-      return lineStart;
-    }
-    public int getLineLength(){
-      return lineLength;
-    }
     
     public ButtonVariable getOpenFileBool(){
       return openFile;
@@ -299,7 +254,7 @@ public final class MainPanel extends JPanel{
       return runFile;
     }
     
-    public ButtonVariable getDebugBool(){
+    public ButtonVariable getDebugModeBool(){
       return debugMode;
     }
     

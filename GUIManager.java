@@ -160,6 +160,7 @@ public final class GUIManager extends JFrame{
         colourScheme.put("style3", Color.decode("#50afde"));
         colourScheme.put("style4", Color.decode("#7eff61"));
         colourScheme.put("style5", Color.decode("#cc6ef5"));
+        colourScheme.put("style6", Color.decode("#f2c246"));
         
         colourScheme.put("clear", new Color(6, 65, 66));
         colourScheme.put("incr", new Color(6, 65, 66));
